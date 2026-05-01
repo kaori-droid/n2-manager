@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>N2 错题管理中心</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      fontFamily: {
+        sans: ['Inter', 'Noto Sans JP', 'system-ui', 'sans-serif'],
+      }
+    }
+  }
+}
+</script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap');
+.card-expand { transition: max-height 0.35s ease, opacity 0.25s ease; }
+.status-red { @apply bg-red-100 text-red-700 border-red-200; }
+.status-yellow { @apply bg-yellow-100 text-yellow-700 border-yellow-200; }
+.status-green { @apply bg-green-100 text-green-700 border-green-200; }
+</style>
+</head>
+<body class="bg-gray-50 min-h-screen font-sans text-gray-800">
+
+<!-- Header -->
+<header class="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
+  <div class="max-w-6xl mx-auto px-4 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+    <div>
+      <h1 class="text-xl font-bold text-gray-900 tracking-tight">N2 错题管理中心</h1>
+      <p class="text-sm text-gray-500 mt-0.5">学生：<span class="font-semibold text-gray-700" id="studentName">陈新月</span></p>
+    </div>
+    <div class="flex items-center gap-6">
+      <div class="text-center">
+        <p class="text-xs text-gray-400 uppercase tracking-wide">距离7月考试</p>
+        <p class="text-2xl font-bold text-indigo-600" id="countdown">--</p>
+        <p class="text-xs text-gray-400">日</p>
+      </div>
+      <div class="flex-1 min-w-32">
+        <p class="text-xs text-gray-400 mb-1">掌握进度</p>
+        <div class="w-full bg-gray-200 rounded-full h-2.5">
+          <div id="progressBar" class="bg-indigo-500 h-2.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+        </div>
+        <p class="text-xs text-gray-400 mt-1 text-right" id="progressLabel">0%</p>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="max-w-6xl mx-auto px-4 py-6 space-y-6">
+
+  <!-- Stats Row -->
+  <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+    <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+      <p class="text-xs text-gray-400 uppercase tracking-wide">录入总数</p>
+      <p class="text-3xl font-bold text-gray-900 mt-1" id="statTotal">0</p>
+    </div>
+    <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+      <p class="text-xs text-gray-400 uppercase tracking-wide">已掌握 <span class="text-green-500">●</span></p>
+      <p class="text-3xl font-bold text-green-600 mt-1" id="statMastered">0</p>
+    </div>
+    <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+      <p class="text-xs text-gray-400 uppercase tracking-wide">高频错误领域</p>
+      <p class="text-xl font-bold text-red-500 mt-1 truncate" id="statTopField">--</p>
+    </div>
+    <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+      <p class="text-xs text-gray-400 uppercase tracking-wide">本周新增</p>
+      <p class="text-3xl font-bold text-indigo-600 mt-1" id="statWeek">0</p>
+    </div>
+  </div>
+
+  <!-- Add Form -->
+  <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+    <button onclick="toggleForm()" class="w-full px-5 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors">
+      <span class="font-semibold text-gray-800 text-lg">+ 添加错题</span>
+      <svg id="formChevron" class="w-5 h-5 text-gray-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+    </button>
+    <div id="formBody" class="px-5 pb-5 border-t border-gray-100 hidden">
+      <form id="errorForm" class="space-y-4 pt-4" onsubmit="addError(event)">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-600 mb-1">日期</label>
+            <input type="date" id="fDate" required class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400 outline-none transition-shadow">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-600 mb-1">所属板块</label>
+            <select id="fCategory" required class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400 outline-none bg-white">
+              <option value="">请选择</option>
+              <option value="文字词汇">文字词汇</option>
+              <option value="文法">文法</option>
+              <option value="阅读">阅读</option>
+              <option value="听力">听力</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-600 mb-1">掌握程度</label>
+            <select id="fStatus" required class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400 outline-none bg-white">
+              <option value="red">红灯 — 未掌握</option>
+              <option value="yellow">黄灯 — 部分掌握</option>
+              <option value="green">绿灯 — 已掌握</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-600 mb-1">考点关键词</label>
+          <input type="text" id="fKeyword" required placeholder="例：敬語の使い分け / 使役受け身" class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400 outline-none">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-600 mb-1">题目内容 / 截图链接</label>
+          <textarea id="fQuestion" rows="2" placeholder="粘贴题目原文或截图链接…" class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400 outline-none resize-y"></textarea>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-600 mb-1">错误答案</label>
+            <input type="text" id="fWrong" placeholder="考生的错误回答" class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-red-200 focus:border-red-300 outline-none">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-600 mb-1">正确答案</label>
+            <input type="text" id="fCorrect" required placeholder="正确回答" class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-green-200 focus:border-green-300 outline-none">
+          </div>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-600 mb-1">老师诊断</label>
+          <textarea id="fDiagnosis" rows="3" placeholder="分析错误原因、知识薄弱点、针对性建议…" class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400 outline-none resize-y"></textarea>
+        </div>
+        <button type="submit" class="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-8 py-2.5 rounded-lg text-sm transition-colors shadow-sm">添加错题</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Filter & Search -->
+  <div class="flex flex-col sm:flex-row gap-3 items-start sm:items-center flex-wrap">
+    <p class="text-sm font-semibold text-gray-500 mr-1">筛选：</p>
+    <div class="flex gap-2 flex-wrap" id="filterCategories">
+      <button onclick="setFilter('category','all')" class="filter-btn-cat px-3 py-1.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700 border border-indigo-200" data-cat="all">全部板块</button>
+      <button onclick="setFilter('category','文字词汇')" class="filter-btn-cat px-3 py-1.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600 border border-gray-200" data-cat="文字词汇">文字词汇</button>
+      <button onclick="setFilter('category','文法')" class="filter-btn-cat px-3 py-1.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600 border border-gray-200" data-cat="文法">文法</button>
+      <button onclick="setFilter('category','阅读')" class="filter-btn-cat px-3 py-1.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600 border border-gray-200" data-cat="阅读">阅读</button>
+      <button onclick="setFilter('category','听力')" class="filter-btn-cat px-3 py-1.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600 border border-gray-200" data-cat="听力">听力</button>
+    </div>
+    <span class="text-gray-300 hidden sm:inline">|</span>
+    <div class="flex gap-2 flex-wrap" id="filterStatus">
+      <button onclick="setFilter('status','all')" class="filter-btn-status px-3 py-1.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700 border border-indigo-200" data-status="all">全部状态</button>
+      <button onclick="setFilter('status','red')" class="filter-btn-status px-3 py-1.5 rounded-full text-xs font-medium bg-red-50 text-red-600 border border-red-200" data-status="red">🔴 未掌握</button>
+      <button onclick="setFilter('status','yellow')" class="filter-btn-status px-3 py-1.5 rounded-full text-xs font-medium bg-yellow-50 text-yellow-600 border border-yellow-200" data-status="yellow">🟡 部分掌握</button>
+      <button onclick="setFilter('status','green')" class="filter-btn-status px-3 py-1.5 rounded-full text-xs font-medium bg-green-50 text-green-600 border border-green-200" data-status="green">🟢 已掌握</button>
+    </div>
+    <div class="flex-1 min-w-40">
+      <input type="text" id="searchInput" oninput="renderCards()" placeholder="搜索关键词…" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400 outline-none">
+    </div>
+  </div>
+
+  <!-- Error Cards -->
+  <div id="cardContainer" class="space-y-3">
+    <div class="text-center py-16 text-gray-400">
+      <p class="text-5xl mb-3">📝</p>
+      <p class="text-lg">暂无错题记录</p>
+      <p class="text-sm">点击上方「添加错题」开始录入</p>
+    </div>
+  </div>
+
+</main>
+
+<footer class="max-w-6xl mx-auto px-4 py-8 text-center text-xs text-gray-400">
+  N2 错题管理中心 · 备考工具
+</footer>
+
+<script>
+// ── State ──
+const STORAGE_KEY = 'n2_error_manager_data';
+let errors = [];
+let filterCat = 'all';
+let filterStatus = 'all';
+
+function load() {
+  try { errors = JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; } catch(e) { errors = []; }
+}
+function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(errors)); }
+
+// ── Countdown ──
+function updateCountdown() {
+  const examDate = new Date('2026-07-05');
+  const today = new Date();
+  const diff = Math.ceil((examDate - today) / (1000 * 60 * 60 * 24));
+  document.getElementById('countdown').textContent = diff > 0 ? diff : 0;
+}
+updateCountdown();
+
+// ── Stats ──
+function updateStats() {
+  document.getElementById('statTotal').textContent = errors.length;
+  const mastered = errors.filter(e => e.status === 'green').length;
+  document.getElementById('statMastered').textContent = mastered;
+  const pct = errors.length ? Math.round((mastered / errors.length) * 100) : 0;
+  document.getElementById('progressBar').style.width = pct + '%';
+  document.getElementById('progressLabel').textContent = pct + '%';
+  // Top field
+  const freq = {};
+  errors.forEach(e => { if (e.category) { freq[e.category] = (freq[e.category] || 0) + 1; } });
+  let top = '--', max = 0;
+  Object.entries(freq).forEach(([k, v]) => { if (v > max) { max = v; top = k + ' ' + max + '件'; } });
+  document.getElementById('statTopField').textContent = top;
+  // Week
+  const weekAgo = new Date();
+  weekAgo.setDate(weekAgo.getDate() - 7);
+  const weekCount = errors.filter(e => new Date(e.date) >= weekAgo).length;
+  document.getElementById('statWeek').textContent = weekCount;
+}
+
+// ── Form toggle ──
+function toggleForm() {
+  const body = document.getElementById('formBody');
+  const chevron = document.getElementById('formChevron');
+  body.classList.toggle('hidden');
+  chevron.classList.toggle('rotate-180');
+}
+
+// ── Add error ──
+function addError(e) {
+  e.preventDefault();
+  const entry = {
+    id: Date.now(),
+    date: document.getElementById('fDate').value,
+    category: document.getElementById('fCategory').value,
+    status: document.getElementById('fStatus').value,
+    keyword: document.getElementById('fKeyword').value.trim(),
+    question: document.getElementById('fQuestion').value.trim(),
+    wrong: document.getElementById('fWrong').value.trim(),
+    correct: document.getElementById('fCorrect').value.trim(),
+    diagnosis: document.getElementById('fDiagnosis').value.trim(),
+  };
+  errors.unshift(entry);
+  save();
+  document.getElementById('errorForm').reset();
+  updateStats();
+  renderCards();
+}
+
+// ── Filter ──
+function setFilter(type, value) {
+  if (type === 'category') { filterCat = value;
+    document.querySelectorAll('.filter-btn-cat').forEach(b => { b.className = b.dataset.cat === value ? 'filter-btn-cat px-3 py-1.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700 border border-indigo-200' : 'filter-btn-cat px-3 py-1.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600 border border-gray-200'; });
+  } else { filterStatus = value;
+    document.querySelectorAll('.filter-btn-status').forEach(b => { b.className = b.dataset.status === value ? 'filter-btn-status px-3 py-1.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700 border border-indigo-200' : b.dataset.status === 'red' ? 'filter-btn-status px-3 py-1.5 rounded-full text-xs font-medium bg-red-50 text-red-600 border border-red-200' : b.dataset.status === 'yellow' ? 'filter-btn-status px-3 py-1.5 rounded-full text-xs font-medium bg-yellow-50 text-yellow-600 border border-yellow-200' : 'filter-btn-status px-3 py-1.5 rounded-full text-xs font-medium bg-green-50 text-green-600 border border-green-200'; });
+  }
+  renderCards();
+}
+
+// ── Render ──
+function renderCards() {
+  const q = (document.getElementById('searchInput').value || '').toLowerCase();
+  let filtered = errors.filter(e => {
+    if (filterCat !== 'all' && e.category !== filterCat) return false;
+    if (filterStatus !== 'all' && e.status !== filterStatus) return false;
+    if (q && !(e.keyword + e.question + e.wrong + e.correct + e.diagnosis + e.category).toLowerCase().includes(q)) return false;
+    return true;
+  });
+  const container = document.getElementById('cardContainer');
+  if (!filtered.length) {
+    container.innerHTML = '<div class="text-center py-16 text-gray-400"><p class="text-5xl mb-3">📝</p><p class="text-lg">没有匹配的错题</p><p class="text-sm">试试调整筛选条件</p></div>';
+    return;
+  }
+  container.innerHTML = filtered.map(entry => {
+    const statusColors = { red: 'bg-red-50 border-red-200', yellow: 'bg-yellow-50 border-yellow-200', green: 'bg-green-50 border-green-200' };
+    const statusDots = { red: '🔴', yellow: '🟡', green: '🟢' };
+    const statusLabels = { red: '未掌握', yellow: '部分掌握', green: '已掌握' };
+    const catColors = { '文字词汇':'bg-blue-100 text-blue-700','文法':'bg-purple-100 text-purple-700','阅读':'bg-amber-100 text-amber-700','听力':'bg-teal-100 text-teal-700' };
+    const dateStr = entry.date ? new Date(entry.date).toLocaleDateString('ja-JP', { year:'numeric', month:'short', day:'numeric' }) : '';
+
+    return `
+    <div class="bg-white rounded-xl border shadow-sm overflow-hidden transition-all hover:shadow-md ${statusColors[entry.status] || 'border-gray-200'}">
+      <div class="p-4 cursor-pointer" onclick="this.parentElement.querySelector('.expandable').classList.toggle('hidden'); this.querySelector('.expand-icon').classList.toggle('rotate-180');">
+        <div class="flex items-start justify-between gap-3 flex-wrap">
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2 flex-wrap mb-1.5">
+              <span class="text-xs font-mono text-gray-400">${dateStr}</span>
+              <span class="px-2 py-0.5 rounded-full text-xs font-medium ${catColors[entry.category] || 'bg-gray-100 text-gray-600'}">${entry.category || '未分类'}</span>
+              <span class="text-sm">${statusDots[entry.status]} ${statusLabels[entry.status]}</span>
+            </div>
+            <p class="font-semibold text-gray-900 text-lg">${escapeHtml(entry.keyword) || '（无关键词）'}</p>
+            ${entry.question ? `<p class="text-sm text-gray-500 mt-1 line-clamp-2">${escapeHtml(entry.question)}</p>` : ''}
+          </div>
+          <div class="flex items-center gap-3 shrink-0">
+            ${entry.wrong ? `<span class="text-sm text-red-500 line-through">${escapeHtml(entry.wrong)}</span>` : ''}
+            ${entry.correct ? `<span class="text-sm text-green-600 font-bold">→ ${escapeHtml(entry.correct)}</span>` : ''}
+            <svg class="expand-icon w-5 h-5 text-gray-400 transition-transform shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+            <button onclick="event.stopPropagation(); deleteError(${entry.id})" class="text-gray-300 hover:text-red-500 transition-colors text-lg leading-none shrink-0" title="删除">&times;</button>
+          </div>
+        </div>
+      </div>
+      <div class="expandable hidden border-t border-gray-100 bg-gray-50/50 px-4 py-4">
+        <p class="text-xs text-gray-400 uppercase tracking-wide mb-2">老师诊断</p>
+        <div class="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">${entry.diagnosis ? escapeHtml(entry.diagnosis) : '<span class="text-gray-400 italic">暂无诊断</span>'}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function deleteError(id) {
+  if (!confirm('确认删除这条错题？')) return;
+  errors = errors.filter(e => e.id !== id);
+  save();
+  updateStats();
+  renderCards();
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+// ── Init ──
+load();
+updateStats();
+renderCards();
+</script>
+
+</body>
+</html>
